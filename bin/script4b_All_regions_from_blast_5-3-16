@@ -1,0 +1,150 @@
+#!/usr/bin/env perl
+#Random locus generator, version two.
+#Takes a BLAST file of reference loci vs all genomes.
+#Filters out results not found in all genomes.
+#outputs results for each input query as individual FASTA files.
+
+use strict;
+use warnings;
+use Getopt::Long;
+use Bio::SeqIO;
+use Bio::searchIO;
+use List::Util 'shuffle';
+use Data::Dumper;
+
+
+
+#global values
+my $input_file;
+my %hash;
+my %nohit;
+my %allhash;
+my @loci_list;
+
+#read user options
+GetOptions(
+	"i=s"	=> \$input_file,
+);
+
+#Open BLAST report.
+print "reading BLAST report... first time \n";
+
+my $input = Bio::SearchIO->new (-file => "<$input_file", '-format' => 'blast')
+	or die "error: failure opening fasta $input_file for reading: $!\n";
+
+##generate list of loci to ignore because they are not present in all genomes
+
+while ( my $result = $input->next_result ){
+	
+			my $database = $result->database_name;
+
+			if (!defined $result->next_hit) {
+				unless ( $database =~  /DSLIZ/i ||$database =~  /BR29/i || $database =~  /BGL/i   ) { 
+					$nohit{$result->query_name} = 1;
+				}
+    		}
+   }
+
+$input->close();
+
+
+##screen out sequences with more than 1 hit above a certain threshhold
+my $input3 = Bio::SearchIO->new (-file => "<$input_file", '-format' => 'blast')
+	or die "error: failure opening fasta $input_file for reading: $!\n";
+
+while ( my $result = $input3->next_result ){
+				my $database = $result->database_name;
+				my $qname = $result->query_name;
+    			my $count = 0; 
+
+    		while (my $hit = $result->next_hit){
+						my $blastname = $hit->name;	
+				    	while (my $hsp = $hit->next_hsp){
+ 							my $eval = $hsp->evalue;
+ 							my $length = $hsp->length('total');
+				    			$count++;				
+    					my $blastseq = $hsp->hit_string;
+						my $blaststart =  $hsp->start('hit');
+						my $blastend  = $hsp->end('hit');																		
+						my $sequence = $hsp->hit_string;
+						my $id = $database.$blastname;
+						 my $identity = $hsp->percent_identity;
+
+    								if ($eval <= .00000001 && $length >= 750 ) {
+												
+												if ($count == 1) {
+													$hash{$qname}{$database} = $sequence;
+													$allhash{$database}{$qname} = $sequence;
+
+												}
+												else {
+											$nohit{$result->query_name} = 1;
+												}
+    									}
+    								else {
+										if ($count ==1) {
+	    								$nohit{$result->query_name} = 1;
+    									}
+    								}
+
+    					}
+			}	
+}
+
+
+
+$input3->close();
+
+
+	
+	###Build a list of loci to shuffle, but leave out those not found in at least 1 genome except DSLiz!!
+	foreach my $k (keys %hash) {   		
+            if (exists $nohit{$k}) {  
+            	#print "ignoring $k: not present in all genomes or found as multiple copies!\n";
+       		}
+                  else {
+						push (@loci_list, $k);
+						}
+		}
+	
+
+
+print "\narray screened: original: ";
+print scalar(keys %hash);
+
+print "\narray screened: removed: ";
+print scalar(keys %nohit);
+
+
+#WAIT SO I have 45 keys in my hash, but 77 keys in my nohit?  How is that possible?
+
+#	array screened: leftover
+#124
+#array screened: removed: 
+#9440
+
+#$hash{$qname}{$database} = $sequence;		
+#$allhash{$database}{$qname} = $sequence;
+
+
+	foreach my $locus (@loci_list){
+		my $namefile = $locus;
+		 $namefile =~ s/scaffold/s/g;
+
+		my $output_file = "strict_v2/sequences/$namefile.fasta";
+
+	open( OUT, ">$output_file" )
+	or die "error: cannot open $output_file for writing: $!\n";
+
+		foreach my $database (sort keys %allhash) {  
+									
+						my $seqfinal = $allhash{$database}{$locus};
+
+				unless ( $database =~  /DSLIZ/i ||$database =~  /BR29/i || $database =~  /BGL/i   ) { 
+
+						print  OUT ">$database\n$seqfinal\n";
+
+						}
+		}
+			
+	}

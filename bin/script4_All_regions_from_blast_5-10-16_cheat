@@ -1,0 +1,103 @@
+#!/usr/bin/env perl
+#Random locus generator, version two.
+#Takes a BLAST file of reference loci vs all genomes.
+#Filters out results not found in all genomes.
+#outputs results for each input query as individual FASTA files.
+
+use strict;
+use warnings;
+use Getopt::Long;
+use Bio::SeqIO;
+use Bio::searchIO;
+use List::Util 'shuffle';
+use Data::Dumper;
+
+
+
+#global values
+my $input_file;
+my %hash;
+my %nohit;
+my %allhash;
+my @loci_list;
+my $evalcutoff;
+
+#read user options
+GetOptions(
+	"i=s"	=> \$input_file,
+	"e=s"  => \$evalcutoff
+);
+
+#set default eval
+
+#Open BLAST report.
+print "reading BLAST report... \n";
+##screen out sequences with more than 1 hit above a certain threshhold
+my $input3 = Bio::SearchIO->new (-file => "<$input_file", '-format' => 'blast')
+	or die "error: failure opening fasta $input_file for reading: $!\n";
+			#First, if its blank in any taxon, add it to the skip list.
+while ( my $result = $input3->next_result ){
+				my $database = $result->database_name;
+				my $qname = $result->query_name;
+	if ( $database =~  /DSLIZ/i ||$database =~  /BR29/i || $database =~  /BGL/i   ) {  # Ignore if database is DSLIZ
+									}
+		else {
+		if (!defined $result->next_hit) {
+						$nohit{$qname} = 1;
+					}					
+			else {
+    				while (my $hit = $result->next_hit){
+						my $blastname = $hit->name;	
+    						my $goodhitcount = 0;
+    						my $count = 0;  #counter for all hits, not just good hits.  
+				    	while (my $hsp = $hit->next_hsp){
+ 							my $eval = $hsp->evalue;
+ 							my $length = $hsp->length('total');
+				    		$count++;
+    							if ( $eval <= $evalcutoff) { 
+    						$goodhitcount++;
+    					my $blastseq = $hsp->hit_string;
+						my $blaststart =  $hsp->start('hit');
+						my $blastend  = $hsp->end('hit');																		
+						my $sequence = $hsp->hit_string;
+						my $id = $database.$blastname;
+						 my $identity = $hsp->percent_identity;
+    					$hash{$qname}{$database} = $sequence;
+    								if ($goodhitcount >=2 ) {  ##if theres more than one good hit
+	    								$nohit{$result->query_name} = 1;
+    								}
+    							}
+						}	
+					}
+			}
+		}
+}
+$input3->close();
+
+
+###Build a list of loci to shuffle, but leave out those added to the exclusion hash
+foreach my $k (keys %hash) {   		
+         if (exists $nohit{$k}) {  
+    		}
+               else {
+					push (@loci_list, $k);
+					}
+}
+	
+##tell user how many loci were screened
+print "\narray screened: original: ";
+print scalar(keys %hash);
+print "\narray screened: removed: ";
+print scalar(keys %nohit);
+
+
+foreach my $locus (@loci_list){  ##print FASTA from each genome to its own folder
+	my $namefile = $locus;
+	$namefile =~ s/scaffold/s/g; #remove 'scaffold' from name file
+	my $output_file = "sequences/$namefile.fasta";
+	open( OUT, ">$output_file" ) or die "error: cannot open $output_file for writing: $!\n";
+	foreach my $database (sort keys %allhash) {  
+		my $seqfinal = $allhash{$database}{$locus};
+		print  OUT ">$database\n$seqfinal\n";
+		}			
+}
