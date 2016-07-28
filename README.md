@@ -12,10 +12,10 @@ The goal of this project was to take the guesswork out of designing diagnostic l
 **Dependencies**
 
 * R
-  *APE
+  * APE
   
 * perl
-  *bioPerl
+  * bioPerl
 
 * BLAST
 * ClustalW2
