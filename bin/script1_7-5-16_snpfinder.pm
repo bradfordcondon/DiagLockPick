@@ -484,20 +484,40 @@ close $oh;
 				 my %outhash = %{shift()};
 
 	open (my $fh, "<", $file)
-	  	  or die "couldn't open '$file' $!"; 			 	
-																	
+	  	  or die "couldn't open '$file' $!"; 		
+
+	  	  if ($mummer eq 'TRUE' ) {
+			 while (<$fh>) {
+	        	chomp ;
+	        	next unless length;	  	  	
+			    my @split = split(/\s+/); 
+			    my $queryloc= $split[10];
+		  	    my $hitname= $split[11];
+		  	    my $quernuc = $split[0];
+		  	    my $querbase = $split[1];
+		  	    my $hitbase = $split[2];
+
+			  	 unless ($hitbase eq 'N' ||$hitbase eq '.' || $querbase eq 'N' || $querbase eq '.'){
+		  	     	++$outhash{$queryloc}{$quernuc};  ##keep track of the number of SNPs at each basepair, for each scaffold
+		  	    	}
+		  	}
+			return (%outhash); 	
+			}
+				
+	  	  else {
 	   		 while (<$fh>) {
-	        chomp ;
-	        next unless length;
-	    my @split = split(/\s+/);   
-	    my $queryloc = $split[0];
-	    my $hitname = $split[1];
-	    my $quernuc = $split[2];
-	    my $hitnuc = $split[3];
-			        ++$outhash{$queryloc}{$quernuc};  ##keep track of the number of SNPs at each basepair, for each scaffold
-			        				} 						
-	   					return (%outhash);
-	   						 } 
+			    chomp ;
+			    next unless length;
+			    my @split = split(/\s+/);   
+			    my $queryloc = $split[0];
+			    my $hitname = $split[1];
+			    my $quernuc = $split[2];
+				++$outhash{$queryloc}{$quernuc};  ##keep track of the number of SNPs at each basepair, for each scaffold
+			      } 						
+	   		return (%outhash);
+	   		 } 
+ }
+
 
 ####OPEN SNP FILE AND BUILD HASH OF NUCLEOTIDE OCCURRENCES
 
@@ -507,23 +527,36 @@ sub build_SNP_NUC_hash {
 		 my $file = shift;
 		 my %outhash = %{shift()};
 			open (my $fh, "<", $file)  or die "couldn't open '$file' $!"; 	
-while (<$fh>) {
-	        chomp ;
-	        next unless length;
-	    my @split = split(/\s+/);   
-	    my $queryloc = $split[0];
-	    my $hitname = $split[1];
-	    my $quernuc = $split[2];
-	    my $hitnuc = $split[3];
-		my $hitbase = $split[5];
-		
+				#separate parsing for mummer or non-mummer
+			if ($mummer eq 'TRUE' ) {
+				 while (<$fh>) {
+		        	chomp ;
+		        	next unless length;	  	  	
+				    my @split = split(/\s+/); 
+				    my $queryloc= $split[10];
+			  	    my $hitname= $split[11];
+			  	    my $quernuc = $split[0];
+			  	    my $hitbase = $split[2];
+			  	    my $querbase = $split[1];
+			  	    unless ($hitbase eq 'N' ||$hitbase eq '.' || $querbase eq 'N' || $querbase eq '.'){
+	  	    		 $outhash{$queryloc}{$quernuc} .="$hitbase";  ##keep track of the number of SNPs at each basepair, for each scaffold
+	  	   			}
+	  	    	}
+				return (%outhash);
+  	 		}	
+		 else {   					
+			while (<$fh>) {
+		    chomp ;
+		    next unless length;
+		    my @split = split(/\s+/);   
+		    my $queryloc = $split[0];
+		    my $hitname = $split[1];
+		    my $quernuc = $split[2];
+		    my $hitnuc = $split[3];
+			my $hitbase = $split[5];
 			$outhash{$queryloc}{$quernuc} .= "$hitbase";
-	    
 				}
-					   return (%outhash);
-						}
-						
-
-
+	  	return (%outhash);
+			}
 				
 				
