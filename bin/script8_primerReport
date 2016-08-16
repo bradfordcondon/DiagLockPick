@@ -1,0 +1,68 @@
+#8-16-16
+#Script written to check primer sequences against all genomes
+#And generate a report based on mismatches
+#
+#
+use strict;
+use warnings;
+use Getopt::Long;
+
+my $usage = "$0 -i primer FASTA sequences\n"; 
+
+my $input_file;
+
+#read user options
+GetOptions(
+	"i=s"	=> \$input_file,
+);
+
+ if(!$input_file ) {
+	 $input_file = '/Users/chet/uky/list.txt'; print "no input file specified, using default list.txt\n";
+	 		}
+
+##list blast databases
+my $wd = '/Users/chet/uky/blast_dbs/';
+my @files = <$wd*.fasta>;
+
+foreach my $file (@files) {   ##for each blast database	
+
+system("blastn -query $input_file -db $file   >> primer_report.blast");
+
+}
+
+print "finished running BLAST: parsing blast report\n";
+##read in BLAST report, generate report.
+
+my $input = Bio::SearchIO->new (-file => "<primer_report.blast", '-format' => 'blast')
+	or die "error: failure opening primer BLAST for reading: $!\n";
+			#First, if its blank in any taxon, add it to the skip list.
+while ( my $result = $input3->next_result ){
+		my $database = $result->database_name;
+		my $qname = $result->query_name;
+    	while (my $hit = $result->next_hit){
+			my $blastname = $hit->name;	
+    			my $goodhitcount = 0;
+    			my $count = 0;  #counter for all hits, not just good hits.  
+			while (my $hsp = $hit->next_hsp){
+ 				my $eval = $hsp->evalue;
+ 				my $length = $hsp->length('total');
+				$count++;
+    				if ( $eval <= $evalcutoff) { 
+    			$goodhitcount++;
+    		my $blastseq = $hsp->hit_string;
+			my $blaststart =  $hsp->start('hit');
+			my $blastend  = $hsp->end('hit');																		
+			my $sequence = $hsp->hit_string;
+			my $id = $database.$blastname;
+			 my $identity = $hsp->percent_identity;
+    		$hash{$qname}{$database} = $sequence;
+    					if ($goodhitcount >=2 ) {  ##if theres more than one good hit
+	    					$nohit{$result->query_name} = 1;
+    					}
+    				}
+						}	
+					}
+			}
+		}
+}
+$input3->close();

@@ -8,15 +8,17 @@ use Getopt::Long;
 use Bio::SeqIO;
 use Data::Dumper;
 # usage
-my $usage = "$0 -i|input fasta_input_file -l|list list of scaffold and ranges \n";
+my $usage = "$0 -i|input fasta_input_file -l|list list of scaffold and ranges\n-s maximumum number of SNP sites allowed in primer region (default: 2) \n";
 
 # global values
 my $input_file;
 my $list_file;
+my $snpSiteMax
 # read user options
 GetOptions(
 	"i|input=s" => \$input_file,
 	"l|list=s" => \$list_file,
+	"s|snps=s" => \$snpSiteMax
 );
 
 # check for user parameters
@@ -26,17 +28,26 @@ if( !$input_file ){
 if( !$list_file ){
 	die $usage;
 }
+if( !$snpSiteMax ){
+	$snpSiteMax = 2;
+}
 #open list file
 
 my %listhash;
+
+my $exclusionCount = 0;
+
 open(my $fh, "<", $list_file)
 			or die "couldnt open '$list_file' $!";						
 			while (<$fh>){
 				chomp;
 				my @split = split(/\t/);
-				#my @split = split(/[_-]/);
-				$listhash{$split[0]}{$split[1]} =$split[2];						
-			}
+				my $thisSNps = $split[8];
+				if ($thisSnp <= $snpSiteMax){			
+				$listhash{$split[0]}{$split[1]} =$split[2];	
+			}else {$exclusionCount++;}
+}
+print"\nExcluded $exclusionCount loci due to > $snpSiteMax SNPs in the primer sites.\n";
 # open input fasta file
 unless( -e $input_file ){
 	die "error: cannot find fasta input file $input_file\n";
