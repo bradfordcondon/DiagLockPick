@@ -13,7 +13,7 @@ my $usage = "$0 -i|input fasta_input_file -l|list list of scaffold and ranges\n-
 # global values
 my $input_file;
 my $list_file;
-my $snpSiteMax
+my $snpSiteMax;
 # read user options
 GetOptions(
 	"i|input=s" => \$input_file,
@@ -29,7 +29,7 @@ if( !$list_file ){
 	die $usage;
 }
 if( !$snpSiteMax ){
-	$snpSiteMax = 2;
+	$snpSiteMax = 4;
 }
 #open list file
 
@@ -42,7 +42,7 @@ open(my $fh, "<", $list_file)
 			while (<$fh>){
 				chomp;
 				my @split = split(/\t/);
-				my $thisSNps = $split[8];
+				my $thisSnp = $split[7];
 				if ($thisSnp <= $snpSiteMax){			
 				$listhash{$split[0]}{$split[1]} =$split[2];	
 			}else {$exclusionCount++;}
@@ -69,11 +69,19 @@ while( my $seqObject = $input->next_seq ){
 #for each start, print out the range fmor start to end
 			foreach my $start (keys $listhash{$k}) {
 					my $end = $listhash{$k}{$start};
+					my $nullCount = 0;
 					my @slice = @seqarray[$start..$end];
+					foreach my $nuc (@slice) { 
+    							  	    if ($nuc eq 'N' ||$nuc eq '.' || $nuc eq 'N' || $nuc eq '.'){
+    							  	    	$nullCount++;
+    							  	    }
+					} 
 					my $outseq = join('', @slice);
-					  print OUT ">$id","_","$start-$end\n", "$outseq\n";  
+					if ($nullCount < 200) {
+					  print OUT ">$id","_","$start-$end\n", "$outseq\n"; 
+					  } 
 					  }
 				}
 		}				
-	}
+}
 

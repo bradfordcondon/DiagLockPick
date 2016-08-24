@@ -1,4 +1,4 @@
-#blasts a single FASTA file against a directory of blast databases.
+#index all genomes
 #output is piped to a single file (.blast extension)
 use strict;
 use warnings;
@@ -14,14 +14,11 @@ GetOptions(
 );
 
 ##list blast databases
-my $wd = '/Users/chet/uky/blast_dbs/'; #/home/bradford.condon/DiagLockPick/blast_dbs/
-
+my $wd = '/Users/chet/uky/blast_dbs/';
 my @files = <$wd*.fasta>;
 
 foreach my $file (@files) {   ##for each blast database	
 
-system("blastn -query $input_file -db $file   >> $input_file.blast");
-
+system("bwa fastmap $file $input_file > $file.map.txt")
 }
-
 

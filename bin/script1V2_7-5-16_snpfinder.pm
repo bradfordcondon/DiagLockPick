@@ -20,6 +20,7 @@
 	my $stepsizemaster;
 	my $minsnpsite;
 	my $mummer;
+	my $maxPrimerSnp;
 	
 	# read user options
 	GetOptions(
@@ -30,7 +31,9 @@
 		"w|windowsize=s" =>\$windowsize,
 		"s|stepsize=s" =>\$stepsizemaster,
 		"m|minsnpsite=s" =>\$minsnpsite,
-		"i|mummer=s" =>\$mummer
+		"i|mummer=s" =>\$mummer,
+		"x|maxPrimerSNPs=s" =>\$maxPrimerSnp
+
 			);
 
 		# check for user parameters	
@@ -38,7 +41,7 @@
 				$directory ='/Users/chet/uky/blast_dbs/MUMmerSNPs/'; print "no directory specified (-d), using /Users/chet/uky/blast_dbs/MUMmerSNPs\n";
 			}
 		 if(!$cladelist ) {
-	 $cladelist = '/Users/chet/uky/list.txt'; print "no cladelist specified (-c), using default list.txt\n";
+	 $cladelist = '/Users/chet/uky/list_mummers.txt'; print "no cladelist specified (-c), using default list.txt\n";
 	 		}
  if(!$windowsize ) {
 	 $windowsize = '400'; print "no windowsize specified(-w), using default 400\n";
@@ -47,10 +50,13 @@ if(!$stepsizemaster ) {
 	 $stepsizemaster = '50'; print "no step size specified(-w), using default 50\n";
 	 		}		
 if (!$minsnpsite) {
-	$minsnpsite = '0'; print "no min SNP site/window set, using 0 defualt\n";
+	$minsnpsite = '0'; print "no min SNP site/window set, using 0 default\n";
 }
 if (!$mummer) {
 	$mummer = 'TRUE'; print "no MUMmer option set, using TRUE \n";
+}
+if (!$maxPrimerSnp) {
+	$maxPrimerSnp = 4; print "no max primer SNP -x set, using default = 4\n";
 }
 	my %masterhash;  #declare global variables. 
 	# Master hash is the main hash, exclusion hash is the SNPs to exlclude
@@ -72,7 +78,7 @@ open(my $fh, "<", $cladelist)
 or die "couldnt open '$cladelist' $!";		
 	while (<$fh>){
 	chomp;
-	my @split = split(/\t/);
+	my @split = split(/\s+/);
 	my $name = $split[0];
 	my $clade = $split[2];
 	$name = $directory.$name;
@@ -116,13 +122,13 @@ print Dumper(\%allhash);  #currently structured with an empty thing and a huge c
  ###################################################    
 
 
-open(my $length_file, "<", "WBKYmaplist.txt")
+open(my $length_file, "<", "scaffold_summaries.txt")
 or die "couldn't open length data file\n";
 
 my %lengthinfo;
 while (<$length_file>){
 	chomp;
-	my @split = split(/\s+/);
+	my @split = split(/\t/);
 	$lengthinfo{$split[0]} = $split[1];
 }
 
@@ -274,7 +280,7 @@ open (my $oh, '>', $outfile) or die "could not open $outfile $!";
   					my $predivscore =$SNP_rich_windows{$k}{$k2}{"diversity"};
  					my $maskfinal = $SNP_rich_windows{$k}{$k2}{"mask"};
  					my $participants = 	$SNP_rich_windows{$k}{$k2}{"participants"};
- 					my $primerCount = $final{$k}{$start}{"primerCount"};	
+ 					my $primerCount = $SNP_rich_windows{$k}{$k2}{"primerCount"};	
 
  					my $finalparts =0;
  					my $divscore = 0;
@@ -285,11 +291,12 @@ open (my $oh, '>', $outfile) or die "could not open $outfile $!";
  				}
 
  					if ($snpcount >= $minsnpsite ){
-
-
  						if ($maskfinal <= ($windowsize/2) ){
+
+ 							if ($primerCount <= $maxPrimerSnp) {
 		
 					  	print $oh "$k\t$k2\t$end\t$snpcount\t$divscore\t$finalparts\t$maskfinal\t$primerCount\n"; ###print out keys at end:	  	
+					}
 					}
 				}
 		}
@@ -341,7 +348,10 @@ close $oh;
 			$count++	if exists $hashcheck{$k}{$i};  #if we found a hash key, count it.  
 					}
 								
-			my $end = $i;  #build keystring as name range
+			my $end = $i;
+			if ($end > $max){
+				$end = $max;
+			}  
 			my $start = $i-$windowsize;
 			  
 			$final{$k}{$start}{"count"} = $count;  #assing range to count value	
@@ -390,7 +400,7 @@ close $oh;
 			$count++	if exists $hashcheck{$k}{$i};  #if we found a hash key in the hash we are counting things, count it.  
 														###
 
-						if ($i < 20  || $ > $winsize- 20){#Checking here for exact conserved start/end for loci.
+						if ($i < 20  || $i > $winsize- 20){#Checking here for exact conserved start/end for loci.
 														#this will ensure that primers are likely to amplify.
 											$primerCount++	if exists $hashcheck{$k}{$i}; 			
 						}
@@ -409,6 +419,11 @@ close $oh;
 								
 			my $end = $i;  #build keystring as name range
 			my $start = $i-$windowsize;
+
+			#Don't want windows to be longer than the scaffold- fix that here.
+			if ($end > $max){
+				$end = $max;
+			}  
 						
 			$final{$k}{$start}{"primerCount"} = $primerCount;		
 			$final{$k}{$start}{"participants"} = $partscore;

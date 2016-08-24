@@ -6,6 +6,10 @@
 use strict;
 use warnings;
 use Getopt::Long;
+use Data::Dumper;  #for debugging
+use Bio::SearchIO;
+
+
 
 my $usage = "$0 -i primer FASTA sequences\n"; 
 
@@ -17,7 +21,7 @@ GetOptions(
 );
 
  if(!$input_file ) {
-	 $input_file = '/Users/chet/uky/list.txt'; print "no input file specified, using default list.txt\n";
+	 $input_file = '/Users/chet/uky/DiagLockPickFinal/2-26-16_final_primers.txt'; print "no input file specified, using default 2-26-16_final_primers.txt\n";
 	 		}
 
 ##list blast databases
@@ -25,44 +29,61 @@ my $wd = '/Users/chet/uky/blast_dbs/';
 my @files = <$wd*.fasta>;
 
 foreach my $file (@files) {   ##for each blast database	
-
-system("blastn -query $input_file -db $file   >> primer_report.blast");
-
+system("blastn -query $input_file -db $file -word_size 4  >> primer_report.blast");
 }
 
-print "finished running BLAST: parsing blast report\n";
 ##read in BLAST report, generate report.
 
+my %hitTracker;
+
+##screen out sequences with more than 1 hit above a certain threshhold
 my $input = Bio::SearchIO->new (-file => "<primer_report.blast", '-format' => 'blast')
-	or die "error: failure opening primer BLAST for reading: $!\n";
-			#First, if its blank in any taxon, add it to the skip list.
-while ( my $result = $input3->next_result ){
+	or die "error: failure opening BLAST report primer_report.blast for reading: $!\n";
+while ( my $result = $input->next_result ){
 		my $database = $result->database_name;
 		my $qname = $result->query_name;
-    	while (my $hit = $result->next_hit){
+		while (my $hit = $result->next_hit){
 			my $blastname = $hit->name;	
-    			my $goodhitcount = 0;
     			my $count = 0;  #counter for all hits, not just good hits.  
-			while (my $hsp = $hit->next_hsp){
+				while (my $hsp = $hit->next_hsp){
  				my $eval = $hsp->evalue;
- 				my $length = $hsp->length('total');
-				$count++;
-    				if ( $eval <= $evalcutoff) { 
-    			$goodhitcount++;
-    		my $blastseq = $hsp->hit_string;
-			my $blaststart =  $hsp->start('hit');
-			my $blastend  = $hsp->end('hit');																		
-			my $sequence = $hsp->hit_string;
-			my $id = $database.$blastname;
-			 my $identity = $hsp->percent_identity;
-    		$hash{$qname}{$database} = $sequence;
-    					if ($goodhitcount >=2 ) {  ##if theres more than one good hit
-	    					$nohit{$result->query_name} = 1;
-    					}
-    				}
+ 				my $qlength = $result->query_length;
+ 				my $hlength = $hsp->length('hit');
+ 				my $percentIdentical = $hsp->frac_identical('query');
+ 				my $hitScaffold = $hit->name;
+				$count++;																
+    		$hitTracker{$qname}{$database}{$count}{"qlength"} = $qlength;
+    		$hitTracker{$qname}{$database}{$count}{"hlength"} = $hlength;  		
+    		$hitTracker{$qname}{$database}{$count}{"percentidentical"} = $percentIdentical;
+    		$hitTracker{$qname}{$database}{$count}{"scaffold"}= $hitScaffold;
+
+    							}
 						}	
 					}
-			}
-		}
-}
-$input3->close();
+			
+$input->close();
+
+ 	 foreach my $primer (sort keys %hitTracker) {   
+	   		foreach my $db (sort keys $hitTracker{$primer}) {	
+	   			foreach my $hitCount(sort keys $hitTracker{$primer}{$db}) {	
+	   				if ($hitCount == 1) {
+	   				    	my $percentID =	$hitTracker{$primer}{$db}{$hitCount}{"percentidentical"};
+	   				    	my $scaffold = $hitTracker{$primer}{$db}{$hitCount}{"scaffold"};
+	   				    	my $hlength = $hitTracker{$primer}{$db}{$hitCount}{"hlength"};
+	   				    	my $qlength = $hitTracker{$primer}{$db}{$hitCount}{"qlength"};
+	   				    	my $coverage = $hlength/$qlength;
+	   				    	print "$primer\t$db\t$coverage\t$percentID\t$scaffold\n";
+					   	     							 			}
+					   	     							 		}
+     		}
+     }
+
+												
+
+
+
+#sort and summarize results
+#interested in a) multiple hits/DB (at a certain threshold, say 2 mismatches)
+#Then, for best hit, check number of mismatches.
+
+
