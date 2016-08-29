@@ -21,14 +21,39 @@ my %nohit;
 my %allhash;
 my @loci_list;
 my $evalcutoff;
+my $runMode;
+my $output_number;
+my $loci_per_package;
+
 
 #read user options
 GetOptions(
 	"i=s"	=> \$input_file,
-	"e=s"  => \$evalcutoff
+	"e=s"  => \$evalcutoff,
+	"m=s" => \$runMode,
+	"o=s" => \$output_number
 );
 
 #set default eval
+if (!$evalcutoff){
+	print "no -e evalue cutoff set.  Using default of .001\n";
+	$evalcutoff = .001;
+}
+if (!$runMode ) {
+	print "no -m runmode set, using default random.\n Options are random for sets of random loci and all for all loci seperately.";
+	$runMode = "random";
+}
+
+if ($runMode ne 'random' && $runMode ne 'all'){
+print 'invalid -m option.  Valid options are "all" and "random" with no default.';
+die;
+}
+
+if (!$output_number && $runMode eq 'random'){
+	print "no output number or loci per set selected for random mode.  Using default = 10000 & 10\n";
+	$output_number = 10000;
+	$loci_per_package = 10;
+}
 
 #Open BLAST report.
 print "reading BLAST report... \n";
@@ -39,7 +64,7 @@ my $input3 = Bio::SearchIO->new (-file => "<$input_file", '-format' => 'blast')
 while ( my $result = $input3->next_result ){
 				my $database = $result->database_name;
 				my $qname = $result->query_name;
-	if ( $database =~  /DSLIZ/i ||$database =~  /BR29/i || $database =~  /BGL/i   ) {  # Ignore if database is DSLIZ
+	if ( $database =~  /DSLIZ/i ||$database =~  /BR29/i || $database =~  /BGL/i   ) {  # Ignore certain databases.
 									}
 		else {
 		if (!defined $result->next_hit) {
@@ -74,8 +99,7 @@ while ( my $result = $input3->next_result ){
 }
 $input3->close();
 
-
-###Build a list of loci to shuffle, but leave out those added to the exclusion hash
+###Build a list of loci to use, but leave out those added to the exclusion hash
 foreach my $k (keys %hash) {   		
          if (exists $nohit{$k}) {  
     		}
@@ -90,7 +114,46 @@ print scalar(keys %hash);
 print "\narray screened: removed: ";
 print scalar(keys %nohit);
 
+if ($runMode eq "random"){
+my $p = 1;#p is locus set tracker. 
+	while ($p <= $output_number){  #loop until output matches number requested
+		my $i = 1;  #set locus counter to zero	
+		my @shuffled = shuffle(@loci_list);
+		##Generate names for this shuffled iteration
+		my @names = @shuffled[1..$loci_per_package];
+		my $namefile= join "_", @names;  
+		 $namefile =~ s/scaffold/s/g;
+		my %subloci;
+		#open new file for this set
+		my $output_file = "sequences/$namefile.fasta";
+	open( OUT, ">$output_file" )
+	or die "error: cannot open $output_file for writing: $!\n";		
+		#start loop of first elements
+		while ($i <$loci_per_package){
+		my $id = shift @shuffled;
+		###Go through all of the keys for that  locus ID
+			foreach my $db (keys $hash{$id}) {
+				my $seq = $hash{$id}{$db};
+				$subloci{$db}{$id}= $seq;  ##build a mini hash, by database, for each set of loci
+			}
+		$i++;
+		}
+		##Now that we have i loci in our subhash, print it out in its own file, sorted by database
 
+					foreach my $db2 (sort keys %subloci) {  ##sort to ensure keys come out in same order
+ 
+ 			print OUT ">$db2\n";  ##print new header for this strain
+						foreach my $locus2 (sort keys $subloci{$db2}) {
+								my $seqfinal = $subloci{$db2}{$locus2};
+							print OUT "$seqfinal";
+							}
+						print OUT "\n";
+					}
+		close OUT;
+		$p++;
+	}
+}
+if ($runMode eq "all"){
 foreach my $locus (@loci_list){  ##print FASTA from each genome to its own folder
 	my $namefile = $locus;
 	$namefile =~ s/scaffold/s/g; #remove 'scaffold' from name file
@@ -101,3 +164,6 @@ foreach my $locus (@loci_list){  ##print FASTA from each genome to its own folde
 		print  OUT ">$database\n$seqfinal\n";
 		}			
 }
+close OUT;
+}
+

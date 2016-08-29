@@ -32,8 +32,7 @@
 		"s|stepsize=s" =>\$stepsizemaster,
 		"m|minsnpsite=s" =>\$minsnpsite,
 		"i|mummer=s" =>\$mummer,
-		"x|maxPrimerSNPs=s" =>\$maxPrimerSnp
-
+		"x|maxPrimerSNP=s" =>\$maxPrimerSnp
 			);
 
 		# check for user parameters	
@@ -56,7 +55,7 @@ if (!$mummer) {
 	$mummer = 'TRUE'; print "no MUMmer option set, using TRUE \n";
 }
 if (!$maxPrimerSnp) {
-	$maxPrimerSnp = 4; print "no max primer SNP -x set, using default = 4\n";
+	$maxPrimerSnp = 40; print "no max primer SNP -x set, using default = 40\n";
 }
 	my %masterhash;  #declare global variables. 
 	# Master hash is the main hash, exclusion hash is the SNPs to exlclude
@@ -398,9 +397,7 @@ close $oh;
 					for ($i; $i <= $winsize; $i++) {	#check each nucleotide, 1 by 1, in our range, for a hash key		
 
 			$count++	if exists $hashcheck{$k}{$i};  #if we found a hash key in the hash we are counting things, count it.  
-														###
-
-						if ($i < 20  || $i > $winsize- 20){#Checking here for exact conserved start/end for loci.
+						if ($winsize - $i <= 20  || $winsize - $i > $windowsize - 20){#Checking here for exact conserved start/end for loci.
 														#this will ensure that primers are likely to amplify.
 											$primerCount++	if exists $hashcheck{$k}{$i}; 			
 						}
