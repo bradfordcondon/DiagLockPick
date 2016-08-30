@@ -49,10 +49,10 @@ if(!$stepsizemaster ) {
 	 $stepsizemaster = '50'; print "no step size specified(-w), using default 50\n";
 	 		}		
 if (!$minsnpsite) {
-	$minsnpsite = '0'; print "no min SNP site/window set, using 0 default\n";
+	$minsnpsite = '0'; print "no min SNP site/window set (-m), using 0 default\n";
 }
 if (!$mummer) {
-	$mummer = 'TRUE'; print "no MUMmer option set, using TRUE \n";
+	$mummer = 'TRUE'; print "no MUMmer option (-i) set, using TRUE \n";
 }
 if (!$maxPrimerSnp) {
 	$maxPrimerSnp = 40; print "no max primer SNP -x set, using default = 40\n";
@@ -114,7 +114,6 @@ my %maskhash;
  ###################################################                	   
  ###################################################                	   
 
-print Dumper(\%allhash);  #currently structured with an empty thing and a huge count....
 
 ###################################################                	   
 	### Load in list of scaffold lengths.
@@ -127,8 +126,10 @@ or die "couldn't open length data file\n";
 my %lengthinfo;
 while (<$length_file>){
 	chomp;
-	my @split = split(/\t/);
-	$lengthinfo{$split[0]} = $split[1];
+	my @split = split(/\s+/);
+	my $key = $split[0];
+	my $value = $split[1];
+	$lengthinfo{$key} = $value;
 }
 
 print Dumper(\%lengthinfo);
@@ -246,16 +247,7 @@ my $outfile = 'out.txt';
 open (my $oh, '>', $outfile) or die "could not open $outfile $!";
 	
   
-	foreach my $k (sort keys %allhash) {	   
-	   		foreach my $k2 (sort {$a<=>$b} keys  $allhash{$k}) {		
-				my $k3 = $allhash{$k}{$k2};			
-									if ($k3 <= 1 ) {   #AT LEAST X other genomes.  					
-									#	delete $allhash{$k}{$k2};
-								 				 	}  
-																}
-										}			
 		
-	
 	print "performing final window analysis\n";
 
 #step size then windowsize

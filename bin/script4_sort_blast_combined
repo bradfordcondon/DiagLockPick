@@ -24,6 +24,8 @@ my $evalcutoff;
 my $runMode;
 my $output_number;
 my $loci_per_package;
+my $lengthCutOff;
+my %noFilter;
 
 
 #read user options
@@ -31,7 +33,8 @@ GetOptions(
 	"i=s"	=> \$input_file,
 	"e=s"  => \$evalcutoff,
 	"m=s" => \$runMode,
-	"o=s" => \$output_number
+	"o=s" => \$output_number,
+	"l=s" => \$lengthCutOff
 );
 
 #set default eval
@@ -55,6 +58,11 @@ if (!$output_number && $runMode eq 'random'){
 	$loci_per_package = 10;
 }
 
+if (!$lengthCutOff){
+	print "no -l length cutoff set.  Using default = 300\n";
+	$lengthCutOff=300;
+}
+
 #Open BLAST report.
 print "reading BLAST report... \n";
 ##screen out sequences with more than 1 hit above a certain threshhold
@@ -64,6 +72,7 @@ my $input3 = Bio::SearchIO->new (-file => "<$input_file", '-format' => 'blast')
 while ( my $result = $input3->next_result ){
 				my $database = $result->database_name;
 				my $qname = $result->query_name;
+				 $noFilter{$qname} = '1';
 	if ( $database =~  /DSLIZ/i ||$database =~  /BR29/i || $database =~  /BGL/i   ) {  # Ignore certain databases.
 									}
 		else {
@@ -79,8 +88,9 @@ while ( my $result = $input3->next_result ){
  							my $eval = $hsp->evalue;
  							my $length = $hsp->length('total');
 				    		$count++;
-    							if ( $eval <= $evalcutoff) { 
+    							if ( $eval <= $evalcutoff && $length >= $lengthCutOff) { 
     						$goodhitcount++;
+    						print "yay\n";
     					my $blastseq = $hsp->hit_string;
 						my $blaststart =  $hsp->start('hit');
 						my $blastend  = $hsp->end('hit');																		
@@ -88,9 +98,10 @@ while ( my $result = $input3->next_result ){
 						my $id = $database.$blastname;
 						 my $identity = $hsp->percent_identity;
     					$hash{$qname}{$database} = $sequence;
-    								if ($goodhitcount >=2 ) {  ##if theres more than one good hit
+    								if ($goodhitcount >=2  || $goodhitcount == 0) {  ##if theres more than one good hit
 	    								$nohit{$result->query_name} = 1;
     								}
+
     							}
 						}	
 					}
@@ -109,10 +120,21 @@ foreach my $k (keys %hash) {
 }
 	
 ##tell user how many loci were screened
-print "\narray screened: original: ";
-print scalar(keys %hash);
-print "\narray screened: removed: ";
-print scalar(keys %nohit);
+print scalar(keys %noFilter), " BLAST results screened.\n" ;
+print "Number of loci matching length and eval criteria: ", scalar(keys %hash), ".\n";
+
+
+if (scalar @loci_list == 0){
+	print "no loci left with selected parameters.  Please reduce stringency and try again.\n";
+	die;
+}
+
+if (scalar @loci_list < $loci_per_package ){
+	print "WARNING: fewer loci meeting criteria than requested loci per package.  Please reduce stringency and try again.\n";
+die;
+}
+
+
 
 if ($runMode eq "random"){
 my $p = 1;#p is locus set tracker. 
