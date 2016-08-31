@@ -104,7 +104,6 @@ my %maskhash;
 			
 	foreach my $file (@files) {   ##open each SNP file
 	print "working on $file \n!";
-			my $element = $file;
 ######################
 # Build hash of each nucleotide change at the SNP
 ######################			
@@ -132,16 +131,11 @@ while (<$length_file>){
 	$lengthinfo{$key} = $value;
 }
 
-print Dumper(\%lengthinfo);
-
-
 ######################
 #count unique character instances in each key
 ######################
 
 my %reporthash;	
-
-#k is scaffold, k2 is nucleotide position.  
 
  	 foreach my $k (keys %allnucs) {   
 	   		foreach my $k2 (keys $allnucs{$k}) {	
@@ -164,7 +158,6 @@ my %reporthash;
 									}
 	###################################################                	   
  ###################################################                	   
-		
 
 #####
 #Output  nucleotide Report from report hash
@@ -232,28 +225,18 @@ my   $conserved = 'conserved.txt';
 
 }
 	 
-	     ######Remove exclusion hash from allhash , creating allhash
-		#######
-		
 	
- ###At this point we may want to only show SNPs with more than X counts- ie those SNPs showing up in more than X of the query genomes.
-###As a cautious starting point, lets exclude SNPs that show up in <50% of the other genomes
-	   
-
-	   #for now: minimum number of other genomes = 1.  Not filtering, essentially.
-
 	
 my $outfile = 'out.txt';
 open (my $oh, '>', $outfile) or die "could not open $outfile $!";
 	
-  
 		
 	print "performing final window analysis\n";
 
 #step size then windowsize
 	my %SNP_rich_windows= Diversity_sliding_window(\%allhash, \%allhash, $stepsizemaster, $windowsize);	  
 	      	      	      	     
-
+#currently causing error... why?
 
 ####
 
@@ -358,6 +341,8 @@ close $oh;
 #######Sub filter window.  Improves upon above sliding window script.  
 #######
 
+#note: currently generating error 8-30-16 with MUMMer data
+
 				sub Diversity_sliding_window {  
 				
    				 my %hash = %{shift()};
@@ -426,9 +411,6 @@ close $oh;
 				}
 				
 
-
-####OPEN SNP FILE AND BUILD HASH BASED ON COUNTS
-
 	sub build_SNP_hash { 
 	
 				 my $file = shift;
@@ -448,12 +430,11 @@ close $oh;
 	        	next unless length;	
 			    my @split = split(/\s+/); 
 	        	next unless $split[11];	  	  	
-			    my $queryloc= $split[11];
-		  	    my $hitname= $file;
-		  	    my $quernuc = $split[0];
-		  	    my $querbase = $split[1];
-		  	    my $hitbase = $split[2];
-
+				    my $queryloc= $split[11];
+			  	    my $hitname= $file;
+			  	    my $quernuc = $split[1];
+			  	    my $hitbase = $split[3];
+			  	    my $querbase = $split[2];
 			  	 unless ($hitbase eq 'N' ||$hitbase eq '.' || $querbase eq 'N' || $querbase eq '.'){
 		  	     	++$outhash{$queryloc}{$quernuc};  ##keep track of the number of SNPs at each basepair, for each scaffold
 		  	    	}
@@ -468,6 +449,7 @@ close $oh;
 			    next unless length;
 			    my @split = split(/\s+/);   
 			    my $queryloc = $split[0];
+			    print "$queryloc should be a number\n";
 			    my $hitname = $split[1];
 			    my $quernuc = $split[2];
 				++$outhash{$queryloc}{$quernuc};  ##keep track of the number of SNPs at each basepair, for each scaffold
@@ -502,9 +484,9 @@ sub build_SNP_NUC_hash {
 		        	next unless $split[11];	  	  	
 				    my $queryloc= $split[11];
 			  	    my $hitname= $file;
-			  	    my $quernuc = $split[0];
-			  	    my $hitbase = $split[2];
-			  	    my $querbase = $split[1];
+			  	    my $quernuc = $split[1];
+			  	    my $hitbase = $split[3];
+			  	    my $querbase = $split[2];
 			  	    unless ($hitbase eq 'N' ||$hitbase eq '.' || $querbase eq 'N' || $querbase eq '.'){
 	  	    		 $outhash{$queryloc}{$quernuc} .="$hitbase";  ##keep track of the number of SNPs at each basepair, for each scaffold
 	  	   			}
