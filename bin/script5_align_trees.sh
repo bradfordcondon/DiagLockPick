@@ -6,7 +6,7 @@ for file in *.fasta
 
 do 
 
-muscle3 -in $file -out ../alignments/$file 
+muscle3 -in $file -out ../alignments/$file  -maxiters 2 
 
 done
 
@@ -21,7 +21,7 @@ clustalw2 -INFILE=$file -TREE
 
 done
 
-for file in *.sh
+for file in *.ph
 
 do
 

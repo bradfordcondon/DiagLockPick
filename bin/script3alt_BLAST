@@ -1,5 +1,5 @@
-#blasts a single FASTA file against a directory of blast databases.
-#output is piped to a single file (.blast extension)
+#execute blast but keep each result in its own file
+
 use strict;
 use warnings;
 use Getopt::Long;
@@ -20,8 +20,10 @@ my @files = <$wd*.fasta>;
 
 foreach my $file (@files) {   ##for each blast database	
 
-system("blastn -query $input_file -db $file -max_target_seqs 2   >> $input_file.blast");
+	my $fileBit = $file;
 
+	$fileBit =~ s/\/Users\/chet\/uky\/blast_dbs\///g; #remove 'scaffold' from name file
+
+system("blastn -query $input_file -out blastReports/$fileBit.blast -db $file -max_target_seqs 2 -outfmt \"6 qseqid length pident sseq\" ");
 }
-
 

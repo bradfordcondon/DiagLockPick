@@ -1,0 +1,13 @@
+#clean tree names
+
+for f in *.ph 
+
+do
+
+perl -i -pe 's/blastReports\///g' $f
+
+perl -i -pe 's/_.*blast//g' $f
+
+perl -i -pe 's/PY0925.fasta.blast/PY0925/g' $f
+
+done

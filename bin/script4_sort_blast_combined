@@ -53,8 +53,12 @@ die;
 }
 
 if (!$output_number && $runMode eq 'random'){
-	print "no output number or loci per set selected for random mode.  Using default = 10000 & 10\n";
+	print "no output number or loci per set selected for random mode.  Using default = 10000\n";
 	$output_number = 10000;
+}
+
+if (!$loci_per_package && $runMode eq 'random'){
+	print "no loci per set selected for random mode.  Using default =  10\n";
 	$loci_per_package = 10;
 }
 
@@ -78,19 +82,18 @@ while ( my $result = $input3->next_result ){
 		else {
 		if (!defined $result->next_hit) {
 						$nohit{$qname} = 1;
-					}					
+					}
 			else {
     				while (my $hit = $result->next_hit){
-						my $blastname = $hit->name;	
+						my $blastname = $hit->name;
     						my $goodhitcount = 0;
-    						my $count = 0;  #counter for all hits, not just good hits.  
+    						my $count = 0;  #counter for all hits.  
 				    	while (my $hsp = $hit->next_hsp){
  							my $eval = $hsp->evalue;
  							my $length = $hsp->length('total');
 				    		$count++;
-    							if ( $eval <= $evalcutoff && $length >= $lengthCutOff) { 
+    							if ( $length >= $lengthCutOff) { 
     						$goodhitcount++;
-    						print "yay\n";
     					my $blastseq = $hsp->hit_string;
 						my $blaststart =  $hsp->start('hit');
 						my $blastend  = $hsp->end('hit');																		
@@ -98,12 +101,16 @@ while ( my $result = $input3->next_result ){
 						my $id = $database.$blastname;
 						 my $identity = $hsp->percent_identity;
     					$hash{$qname}{$database} = $sequence;
-    								if ($goodhitcount >=2  || $goodhitcount == 0) {  ##if theres more than one good hit
-	    								$nohit{$result->query_name} = 1;
+    								if ($goodhitcount >=2 ) {  ##if theres more than one good hit
+	    								$nohit{$qname} = 1;
     								}
-
     							}
+    							
 						}	
+						if ($goodhitcount ==0){
+	    								$nohit{$qname} = 1; #if theres no hits matching criteria
+
+    								}
 					}
 			}
 		}
@@ -118,10 +125,11 @@ foreach my $k (keys %hash) {
 					push (@loci_list, $k);
 					}
 }
-	
+
 ##tell user how many loci were screened
 print scalar(keys %noFilter), " BLAST results screened.\n" ;
-print "Number of loci matching length and eval criteria: ", scalar(keys %hash), ".\n";
+print "Number of loci matching length and eval criteria for at least 1 strain: ", scalar(keys %hash), ".\n";
+print "Number of loci matching criteria for all strains: ", scalar @loci_list , ".\n";
 
 
 if (scalar @loci_list == 0){
@@ -133,8 +141,6 @@ if (scalar @loci_list < $loci_per_package ){
 	print "WARNING: fewer loci meeting criteria than requested loci per package.  Please reduce stringency and try again.\n";
 die;
 }
-
-
 
 if ($runMode eq "random"){
 my $p = 1;#p is locus set tracker. 
@@ -161,6 +167,7 @@ my $p = 1;#p is locus set tracker.
 		$i++;
 		}
 		##Now that we have i loci in our subhash, print it out in its own file, sorted by database
+
 
 					foreach my $db2 (sort keys %subloci) {  ##sort to ensure keys come out in same order
  

@@ -1,0 +1,155 @@
+
+#8-31-16
+#Read individual tab delimited blast reports
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use List::Util 'shuffle';
+
+
+
+my $usage = "$0 -i PATH to (tab delimited -6 format) blast reports \n"; 
+my %seqHash;
+my %dupeHash;
+my $lengthCutOff = 200;
+my $directory;
+my $minCount = 50;
+my $loci_per_package  = 10;
+my $output_number = 10000;
+	GetOptions(
+		"i|inputdirectory=s" =>\$directory
+			);
+
+		# check for user parameters	
+			if( !$directory ){
+				$directory ='/Users/chet/uky/blast_dbs/MUMmerSNPs/'; print "no directory specified (-d), using /Users/chet/uky/blast_dbs/MUMmerSNPs\n";
+			die;
+			}
+
+
+print "Running BLAST parsing with the following parameters:\nminimum number of strains to have each locus:\t",
+$minCount, "\nloci per package:\t", $loci_per_package, "\ntotal locus packages:\t", $output_number, "\nlength cutoff to count a hit:\t", $lengthCutOff. "\n";
+
+
+#read in each blast output file
+my @files = <$directory*>; 
+
+foreach my $file (@files){
+	my $prevID = 0;
+
+open(my $fh, "<", $file)
+or die "couldnt open '$file' $!";		
+	while (<$fh>){
+	chomp;
+	my @split = split(/\s+/);#qseqid length pident sseq
+	my $qseqid = $split[0];
+	my $length = $split[1];
+	my $pident = $split[2];
+	my $sseq = $split[3];
+
+	if ($qseqid ne $prevID){
+		$seqHash{$qseqid}{$file}{'sequence'} = $sseq;
+		$seqHash{$qseqid}{$file}{'length'} = $length;					
+		$seqHash{$qseqid}{$file}{'pident'} = $pident;									
+	}
+	
+	if ($qseqid eq $prevID){ #check if both hits are valid.  If yes, mark this query as bad.
+		if ($length > 300){
+			$dupeHash{$qseqid}++;
+		}
+	}
+	$prevID = $qseqid;
+}
+close $fh;
+}
+
+#report how many were removed due to duplicates, how many are in hash
+print scalar(keys %dupeHash), " loci removed due to duplicates in at least one strain.\n" ;
+
+
+#determine how many of each query meet the set criteria
+foreach my $k (keys %seqHash) {
+	my $strainCounter = 0;
+  	foreach my $k2(keys $seqHash{$k}) {			
+  			my $sequence =  $seqHash{$k}{$k2}{"sequence"};
+  			my $pident = $seqHash{$k}{$k2}{"pident"};
+  			my $length = $seqHash{$k}{$k2}{"length"}; 		
+  		if ($length >= $lengthCutOff){
+  			$strainCounter++;
+  		}else {
+  			$dupeHash{$k}++;
+  		}
+
+  		}
+  		$seqHash{$k}{"strainsPresentIn"} = $strainCounter;
+  	}
+
+my @loci_list;
+
+my $countX = 0;
+foreach my $k2 (keys %seqHash) {  
+         if (exists $dupeHash{$k2} || $seqHash{$k2}{"strainsPresentIn"} < $minCount ) { 
+         	$countX++;
+    		}
+               else {
+					push (@loci_list, $k2);
+					}
+}
+print scalar @loci_list, " remaining loci after removing duplicates and loci below length cutoff of $lengthCutOff.\n";
+
+
+
+###Shuffle list desired number of times, output sequences
+
+
+if (scalar @loci_list == 0){
+	print "no loci left with selected parameters.  Please reduce stringency and try again.\n";
+	die;
+}
+
+if (scalar @loci_list < $loci_per_package ){
+	print "WARNING: fewer loci meeting criteria than requested loci per package.  Please reduce stringency and try again.\n";
+die;
+}
+
+my $p = 1;#p is locus set tracker. 
+	while ($p <= $output_number){  #loop until output matches number requested
+		my $i = 1;  #set locus counter to zero	
+		my @shuffled = shuffle(@loci_list);
+		##Generate names for this shuffled iteration
+		my @names = @shuffled[1..$loci_per_package];
+		my $namefile= join "_", @names;  
+		 $namefile =~ s/scaffold/s/g;
+		my %subloci;
+		#open new file for this set
+		my $output_file = "sequences/$namefile.fasta";
+	open( OUT, ">$output_file" )
+	or die "error: cannot open $output_file for writing: $!\n";		
+		#start loop of first elements
+		while ($i <=$loci_per_package){
+		my $id = shift @shuffled;
+		###Go through all of the keys for that  locus ID
+			foreach my $db (keys $seqHash{$id}) {
+				unless ($db eq "strainsPresentIn"){
+					my $seq = $seqHash{$id}{$db}{"sequence"};
+					$subloci{$db}{$id}= $seq;  ##build a mini hash, by database, for each set of loci
+			}
+			}
+		$i++;
+		}
+		##Now that we have i loci in our subhash, print it out in its own file, sorted by database
+
+
+					foreach my $db2 (sort keys %subloci) {  ##sort to ensure keys come out in same order
+ 
+ 			print OUT ">$db2\n";  ##print new header for this strain
+						foreach my $locus2 (sort keys $subloci{$db2}) {
+								my $seqfinal = $subloci{$db2}{$locus2};
+							print OUT "$seqfinal";
+							}
+						print OUT "\n";
+					}
+		close OUT;
+		$p++;
+	}
