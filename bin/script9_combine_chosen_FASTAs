@@ -1,0 +1,121 @@
+#This script is for the final part of DiagLockPick
+#It reads in fASTA alignments, concatenates them randomly based on a list
+
+	use strict;
+	use warnings;
+	use Data::Dumper;  #for debugging
+	use Getopt::Long;
+	use Bio::SeqIO;
+use List::Util 'shuffle';
+
+
+	my $usage = "$0  ";
+	my $locusList;
+	my $directory;
+	my $loci_per_package  = 10;
+	my $output_number = 20;
+
+	
+	# read user options
+	GetOptions(
+		"l|locusList=s" => \$locusList,
+		"d|directory=s" => \$directory
+		
+			);
+
+
+
+if( !$directory ){
+				$directory ='/Users/chet/uky/DiagLockPickFinal/individualLocusAnalysis9-13-16/srcData/alignmentsIndividual/'; print "no directory specified (-d), using default\n";
+			}
+
+
+my @list;
+
+open(my $fh, "<", $locusList)
+			or die "couldnt open '$locusList' $!";						
+			while (<$fh>){
+				chomp;
+				    push (@list, $_);
+	}
+
+#retrieve these FASTA files.
+my %allHash; #allHash will be organized: locus -> genome -> seq
+my %otherHash;
+foreach my $locus (@list) {  
+my $filePath = $directory . $locus . ".fasta";
+my $input = Bio::SeqIO->new (-file => "<$filePath", '-format' => 'Fasta')
+	or die "error: failure opening fasta $filePath for reading: $!\n";
+	while( my $seqObject = $input->next_seq ){
+		my $id  = $seqObject->id;
+		my $seq = $seqObject->seq;
+		$allHash{$locus}{$id} = $seq;
+		$otherHash{$id}{$locus}= $seq;
+		}
+}
+
+
+
+#concatenate and print
+ 	#my $namefile= join "_", @list;  
+ 	my $namefile = "allSeqs";
+	my $output_file = "$namefile.fasta";
+	open( OUT, ">$output_file" )
+ 	or die "error: cannot open $output_file for writing: $!\n";	
+	foreach my $db2 (sort keys %otherHash) {  ##sort to ensure keys come out in same order
+ 			print OUT ">$db2\n";  ##print new header for this strain
+ 						foreach my $locus2 (sort keys $otherHash{$db2}) {
+ 								my $seqfinal = $otherHash{$db2}{$locus2};
+ 							print OUT "$seqfinal";
+ 							}
+ 						print OUT "\n";
+ 					}
+
+
+
+
+
+#Now, randomly shuffle loci and retrieve
+
+# my $p = 1;#p is locus set tracker. 
+# 	while ($p <= $output_number){  #loop until output matches number requested
+# 		my $i = 1;  #set locus counter to zero	
+# 		my @shuffled = shuffle(@list);
+# 		##Generate names for this shuffled iteration
+# 		my @names = @shuffled[1..$loci_per_package];
+# 		my $namefile= join "_", @names;  
+# 		 $namefile =~ s/scaffold/s/g;
+# 		my %subloci;
+# 		#open new file for this set
+# 		my $output_file = "sequencesCombined/$namefile.fasta";
+# 	open( OUT, ">$output_file" )
+# 	or die "error: cannot open $output_file for writing: $!\n";		
+# 		#start loop of first elements
+# 		while ($i <=$loci_per_package){
+# 		my $id = shift @shuffled;
+# 		###Go through all of the keys for that  locus ID
+# 			foreach my $db (keys $allHash{$id}) {
+# 				unless ($db eq "strainsPresentIn"){
+# 					my $seq = $allHash{$id}{$db};
+# 					$subloci{$db}{$id}= $seq;  ##build a mini hash, by database, for each set of loci
+# 			}
+# 			}
+# 		$i++;
+# 		}
+# 		##Now that we have i loci in our subhash, print it out in its own file, sorted by database
+
+
+# 					foreach my $db2 (sort keys %subloci) {  ##sort to ensure keys come out in same order
+ 
+#  			print OUT ">$db2\n";  ##print new header for this strain
+# 						foreach my $locus2 (sort keys $subloci{$db2}) {
+# 								my $seqfinal = $subloci{$db2}{$locus2};
+# 							print OUT "$seqfinal";
+# 							}
+# 						print OUT "\n";
+# 					}
+# 		close OUT;
+# 		$p++;
+# 	}
+
+

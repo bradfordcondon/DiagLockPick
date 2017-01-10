@@ -22,8 +22,8 @@ my @files = <*.fasta>;
 
 	print OUT "PRIMER_SEQUENCE_ID=$id\n";
 	print OUT "SEQUENCE_TEMPLATE=$seq\n";
-	print OUT "PRIMER_PRODUCT_SIZE_RANGE=370-400\n";
-	print OUT "PRIMER_MAX_SIZE=23\n";
+	print OUT "PRIMER_PRODUCT_SIZE_RANGE=380-400\n";
+	print OUT "PRIMER_MAX_SIZE=21\n";
 	print OUT "PRIMER_NUM_RETURN=1\n";
 	print OUT "=\n";
 

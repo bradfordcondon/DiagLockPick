@@ -1,9 +1,10 @@
 #clean tree names
 
-for f in *.ph 
+for f in *.fasta 
 
 do
 
+perl -i -pe 's/blastreports\///g' $f
 perl -i -pe 's/blastReports\///g' $f
 
 perl -i -pe 's/_.*blast//g' $f

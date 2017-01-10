@@ -16,7 +16,7 @@ my $lengthCutOff = 200;
 my $directory;
 my $minCount = 50;
 my $loci_per_package  = 10;
-my $output_number = 200;
+my $output_number = 1000;
 	GetOptions(
 		"i|inputdirectory=s" =>\$directory
 			);
@@ -113,43 +113,63 @@ if (scalar @loci_list < $loci_per_package ){
 die;
 }
 
-my $p = 1;#p is locus set tracker. 
-	while ($p <= $output_number){  #loop until output matches number requested
-		my $i = 1;  #set locus counter to zero	
-		my @shuffled = shuffle(@loci_list);
-		##Generate names for this shuffled iteration
-		my @names = @shuffled[1..$loci_per_package];
-		my $namefile= join "_", @names;  
-		 $namefile =~ s/scaffold/s/g;
-		my %subloci;
-		#open new file for this set
-		my $output_file = "sequences/$namefile.fasta";
-	open( OUT, ">$output_file" )
-	or die "error: cannot open $output_file for writing: $!\n";		
-		#start loop of first elements
-		while ($i <=$loci_per_package){
-		my $id = shift @shuffled;
-		###Go through all of the keys for that  locus ID
-			foreach my $db (keys $seqHash{$id}) {
-				unless ($db eq "strainsPresentIn"){
-					my $seq = $seqHash{$id}{$db}{"sequence"};
-					$subloci{$db}{$id}= $seq;  ##build a mini hash, by database, for each set of loci
-			}
-			}
-		$i++;
-		}
-		##Now that we have i loci in our subhash, print it out in its own file, sorted by database
+# my $p = 1;#p is locus set tracker. 
+# 	while ($p <= $output_number){  #loop until output matches number requested
+# 		my $i = 1;  #set locus counter to zero	
+# 		my @shuffled = shuffle(@loci_list);
+# 		##Generate names for this shuffled iteration
+# 		my @names = @shuffled[1..$loci_per_package];
+# 		my $namefile= join "_", @names;  
+# 		 $namefile =~ s/scaffold/s/g;
+# 		my %subloci;
+# 		#open new file for this set
+# 		my $output_file = "sequences/$namefile.fasta";
+# 	open( OUT, ">$output_file" )
+# 	or die "error: cannot open $output_file for writing: $!\n";		
+# 		#start loop of first elements
+# 		while ($i <=$loci_per_package){
+# 		my $id = shift @shuffled;
+# 		###Go through all of the keys for that  locus ID
+# 			foreach my $db (keys $seqHash{$id}) {
+# 				unless ($db eq "strainsPresentIn"){
+# 					my $seq = $seqHash{$id}{$db}{"sequence"};
+# 					$subloci{$db}{$id}= $seq;  ##build a mini hash, by database, for each set of loci
+# 			}
+# 			}
+# 		$i++;
+# 		}
+# 		##Now that we have i loci in our subhash, print it out in its own file, sorted by database
 
 
-					foreach my $db2 (sort keys %subloci) {  ##sort to ensure keys come out in same order
+# 					foreach my $db2 (sort keys %subloci) {  ##sort to ensure keys come out in same order
  
- 			print OUT ">$db2\n";  ##print new header for this strain
-						foreach my $locus2 (sort keys $subloci{$db2}) {
-								my $seqfinal = $subloci{$db2}{$locus2};
-							print OUT "$seqfinal";
-							}
-						print OUT "\n";
-					}
-		close OUT;
-		$p++;
+#  			print OUT ">$db2\n";  ##print new header for this strain
+# 						foreach my $locus2 (sort keys $subloci{$db2}) {
+# 								my $seqfinal = $subloci{$db2}{$locus2};
+# 							print OUT "$seqfinal";
+# 							}
+# 						print OUT "\n";
+# 					}
+# 		close OUT;
+# 		$p++;
+# 	}
+
+
+#lets also go through and print out each locus individually
+
+#open new file for this locus
+	foreach my $finalLoc (@loci_list) {
+		my $namefile = $finalLoc;
+		$namefile =~ s/scaffold/s/g;
+		my $output_file = "sequencesIndividual/$namefile.fasta";
+	open( OUT, ">$output_file" )
+	or die "error: cannot open $output_file for writing: $!\n";
+		foreach my $db (keys $seqHash{$finalLoc}) {
+				unless ($db eq "strainsPresentIn"){
+					my $seq = $seqHash{$finalLoc}{$db}{"sequence"};
+					print OUT ">", "$db", "\n", "$seq", "\n";
+			}
 	}
+}
+
+		

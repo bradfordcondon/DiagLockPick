@@ -8,12 +8,14 @@ use warnings;
 use Getopt::Long;
 use Data::Dumper;  #for debugging
 use Bio::SearchIO;
-
+use File::Basename;
 
 
 my $usage = "$0 -i primer FASTA sequences\n"; 
 
 my $input_file;
+my %hitTracker;
+my $reportwd = '/Users/chet/uky/DiagLockPickFinal/individualLocusAnalysis9-13-16/primerReports';
 
 #read user options
 GetOptions(
@@ -21,69 +23,61 @@ GetOptions(
 );
 
  if(!$input_file ) {
-	 $input_file = '/Users/chet/uky/DiagLockPickFinal/2-26-16_final_primers.txt'; print "no input file specified, using default 2-26-16_final_primers.txt\n";
+	 print "no input file specified\n";
+	 die;
 	 		}
+###
+###generate primer reports
+###
 
 ##list blast databases
 my $wd = '/Users/chet/uky/blast_dbs/';
-my @files = <$wd*.fasta>;
+ my @files = <$wd*.fasta>;
+
+# foreach my $file (@files) {   ##for each blast database	
+# 	my $filehandle = basename($file);
+
+# system("blastn -query $input_file -db $file -max_target_seqs 1 -outfmt '6 qseqid sseqid qlen length pident qstart qend sstart send' -task blastn-short > $reportwd/$filehandle.blast")
+
+# }
+
+###
+###read in blast reports
+###
+ @files = <$reportwd/*.blast>;
 
 foreach my $file (@files) {   ##for each blast database	
-system("blastn -query $input_file -db $file -word_size 4  >> primer_report.blast");
+	open (my $fh, "<", $file)
+	  	  or die "couldn't open '$file' $!"; 
+		while (<$fh>){
+	chomp;
+	my @split = split(/\t/);
+	my $qseqid = $split[0];
+	my $sseqid = $split[1];
+	my $qlen = $split[2];
+	my $hlen = $split[3];
+	my $pcov = $hlen/$qlen*100;
+	my $pident = $split[4];
+$hitTracker{$qseqid}{$file}{"identity"} = $pident;
+$hitTracker{$qseqid}{$file}{"cov"} = $pcov;
+	}
 }
 
-##read in BLAST report, generate report.
-
-my %hitTracker;
-
-##screen out sequences with more than 1 hit above a certain threshhold
-my $input = Bio::SearchIO->new (-file => "<primer_report.blast", '-format' => 'blast')
-	or die "error: failure opening BLAST report primer_report.blast for reading: $!\n";
-while ( my $result = $input->next_result ){
-		my $database = $result->database_name;
-		my $qname = $result->query_name;
-		while (my $hit = $result->next_hit){
-			my $blastname = $hit->name;	
-    			my $count = 0;  #counter for all hits, not just good hits.  
-				while (my $hsp = $hit->next_hsp){
- 				my $eval = $hsp->evalue;
- 				my $qlength = $result->query_length;
- 				my $hlength = $hsp->length('hit');
- 				my $percentIdentical = $hsp->frac_identical('query');
- 				my $hitScaffold = $hit->name;
-				$count++;																
-    		$hitTracker{$qname}{$database}{$count}{"qlength"} = $qlength;
-    		$hitTracker{$qname}{$database}{$count}{"hlength"} = $hlength;  		
-    		$hitTracker{$qname}{$database}{$count}{"percentidentical"} = $percentIdentical;
-    		$hitTracker{$qname}{$database}{$count}{"scaffold"}= $hitScaffold;
-
-    							}
-						}	
-					}
-			
-$input->close();
-
- 	 foreach my $primer (sort keys %hitTracker) {   
+##Generate report.
+foreach my $primer (sort keys %hitTracker) {   
+ 	 	my $primerCounterPerfect = 0;
+ 	 	my $primerCounter = 0;
 	   		foreach my $db (sort keys $hitTracker{$primer}) {	
-	   			foreach my $hitCount(sort keys $hitTracker{$primer}{$db}) {	
-	   				if ($hitCount == 1) {
-	   				    	my $percentID =	$hitTracker{$primer}{$db}{$hitCount}{"percentidentical"};
-	   				    	my $scaffold = $hitTracker{$primer}{$db}{$hitCount}{"scaffold"};
-	   				    	my $hlength = $hitTracker{$primer}{$db}{$hitCount}{"hlength"};
-	   				    	my $qlength = $hitTracker{$primer}{$db}{$hitCount}{"qlength"};
-	   				    	my $coverage = $hlength/$qlength;
-	   				    	print "$primer\t$db\t$coverage\t$percentID\t$scaffold\n";
-					   	     							 			}
-					   	     							 		}
-     		}
-     }
+	   				    	my $pident = $hitTracker{$primer}{$db}{"identity"};
+	   				    	my $pcoverage = $hitTracker{$primer}{$db}{"cov"};
+	   				    	if ($pident == 100 && $pcoverage >= 95) {
+	   				    		$primerCounterPerfect++;
+	   				    	}
+	   				    	$primerCounter++;
+	   		}
 
-												
+print "$primer\t$primerCounterPerfect\t$primerCounter\n";
+}
+					   	     							 		
 
-
-
-#sort and summarize results
-#interested in a) multiple hits/DB (at a certain threshold, say 2 mismatches)
-#Then, for best hit, check number of mismatches.
-
-
+											

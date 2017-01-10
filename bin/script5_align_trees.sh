@@ -1,16 +1,16 @@
 
-mkdir ../alignments
-mkdir ../trees
+mkdir ../alignmentsIndividual
+mkdir ../treesIndividual
 
 for file in *.fasta
 
 do 
 
-muscle3 -in $file -out ../alignments/$file  -maxiters 2 
+muscle3 -in $file -out ../alignmentsIndividual/$file  -maxiters 2 
 
 done
 
-cd alignments
+cd alignmentsIndividual
 
 for file in *.fasta
 
@@ -25,6 +25,6 @@ for file in *.ph
 
 do
 
-	mv $file ../trees/
+	mv $file ../treesIndividual/
 
 done

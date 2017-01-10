@@ -11,7 +11,7 @@ use Data::Dumper;
 my $usage = "$0 -i|input fasta_input_file -l|list list of scaffold and ranges\n-s maximumum number of SNP sites allowed in primer region (default: 2) \n";
 
 # global values
-my $input_file;
+my $input_file; #FASTA file
 my $list_file;
 my $snpSiteMax;
 # read user options
@@ -29,7 +29,7 @@ if( !$list_file ){
 	die $usage;
 }
 if( !$snpSiteMax ){
-	$snpSiteMax = 4;
+	$snpSiteMax = 100;
 }
 #open list file
 
@@ -43,9 +43,9 @@ open(my $fh, "<", $list_file)
 				chomp;
 				my @split = split(/\t/);
 				my $thisSnp = $split[7];
-				if ($thisSnp <= $snpSiteMax){			
+				#if ($thisSnp <= $snpSiteMax){			
 				$listhash{$split[0]}{$split[1]} =$split[2];	
-			}else {$exclusionCount++;}
+			#}else {$exclusionCount++;}
 	}
 
 

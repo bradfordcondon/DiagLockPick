@@ -1,0 +1,8 @@
+
+for f in *.ph 
+
+do
+
+mv $f /Users/chet/uky/DiagLockPick/OpenSet9-9-16/trees/
+
+done

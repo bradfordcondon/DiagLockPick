@@ -1,0 +1,27 @@
+#script7c
+#parse primer3 report, create FASTA file of primers.
+ use File::Slurp;
+
+my $file = 'output_primer_file';
+
+my $data = read_file($file) ;
+close $file;
+
+
+my @words = split /\n=\n/, $data;
+
+
+foreach my $entry (@words){
+
+(my $title)= $entry =~ /PRIMER_SEQUENCE_ID=(.*)\n/ ;
+(my $leftPrimer)= $entry =~ /PRIMER_LEFT_0_SEQUENCE=(.*)\n/ ;
+(my $rightPrimer)= $entry =~ /PRIMER_RIGHT_0_SEQUENCE=(.*)\n/ ;
+
+	$titleLeft = $title . '_left';
+	$titleRight = $title . '_right';
+
+if ($leftPrimer ne '' ){
+	print ">$titleLeft\n", $leftPrimer, "\n";
+	print ">$titleRight\n", $rightPrimer, "\n";
+	}
+}
