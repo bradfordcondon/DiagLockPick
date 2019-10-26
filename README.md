@@ -1,4 +1,4 @@
-# DiagLockPick v0.1  7-26-16
+# DiagLockPick
 Updated 7-26-16 by Bradford Condon, Mark Farman
 Department of Plant Pathology
 University of Kentucky
